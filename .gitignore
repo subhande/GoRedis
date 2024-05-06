@@ -1,4 +1,4 @@
-.devcontainer
+.devcontainer/**
 .github
 bin/dice
 **.DS_Store
