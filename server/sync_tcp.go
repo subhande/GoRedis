@@ -12,7 +12,7 @@ import (
 	"github.com/subhande/goredis/core"
 )
 
-func readCommand(c net.Conn) (*core.RedisCmd, error) {
+func readCommand(c io.ReadWriter) (*core.RedisCmd, error) {
 	// TODO: Max read in one shot is 512 bytes
 	// tesTo allow input > 512 by, then repeated read until
 	// we get EOF or designated delimiter
@@ -33,11 +33,11 @@ func readCommand(c net.Conn) (*core.RedisCmd, error) {
 
 }
 
-func respondError(err error, c net.Conn) {
+func respondError(err error, c io.ReadWriter) {
 	c.Write([]byte(fmt.Sprintf("-%s\r\n", err)))
 }
 
-func respond(cmd *core.RedisCmd, c net.Conn) {
+func respond(cmd *core.RedisCmd, c io.ReadWriter) {
 	err := core.EvalAndRespond(cmd, c)
 	if err != nil {
 		respondError(err, c)
@@ -53,7 +53,8 @@ func RunSyncTCPServer() {
 	lstn, err := net.Listen("tcp", config.Host+":"+strconv.Itoa(config.Port))
 
 	if err != nil {
-		panic(err)
+		log.Println("err", err)
+		return
 	}
 
 	for {
@@ -62,12 +63,11 @@ func RunSyncTCPServer() {
 		c, err := lstn.Accept()
 
 		if err != nil {
-			panic(err)
+			log.Println("err", err)
 		}
 
 		// increment the number of concurrent clients
 		con_clients += 1
-		log.Println("client connected with address:", c.RemoteAddr(), "concurrent clients", con_clients)
 
 		for {
 			// over the socket, continuously read the command and print it out
@@ -76,11 +76,9 @@ func RunSyncTCPServer() {
 			if err != nil {
 				c.Close()
 				con_clients -= 1
-				log.Println("client disconnected", c.RemoteAddr(), "concurrent clients", con_clients)
 				if err == io.EOF {
 					break
 				}
-				log.Println("err", err)
 			}
 			respond(cmd, c)
 
