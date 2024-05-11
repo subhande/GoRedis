@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -12,7 +11,15 @@ import (
 	"github.com/subhande/goredis/core"
 )
 
-func readCommand(c io.ReadWriter) (*core.RedisCmd, error) {
+func toArrayString(ai []interface{}) ([]string, error) {
+	as := make([]string, len(ai))
+	for i := range ai {
+		as[i] = ai[i].(string)
+	}
+	return as, nil
+}
+
+func readCommands(c io.ReadWriter) (core.RedisCmds, error) {
 	// TODO: Max read in one shot is 512 bytes
 	// tesTo allow input > 512 by, then repeated read until
 	// we get EOF or designated delimiter
@@ -22,26 +29,30 @@ func readCommand(c io.ReadWriter) (*core.RedisCmd, error) {
 		return nil, err
 	}
 
-	tokens, err := core.DecodeArrayString(buf[:n])
+	values, err := core.Decode(buf[:n])
 
 	if err != nil {
 		return nil, err
 
 	}
 
-	return &core.RedisCmd{Cmd: strings.ToUpper(tokens[0]), Args: tokens[1:]}, nil
-
-}
-
-func respondError(err error, c io.ReadWriter) {
-	c.Write([]byte(fmt.Sprintf("-%s\r\n", err)))
-}
-
-func respond(cmd *core.RedisCmd, c io.ReadWriter) {
-	err := core.EvalAndRespond(cmd, c)
-	if err != nil {
-		respondError(err, c)
+	var cmds []*core.RedisCmd = make([]*core.RedisCmd, 0)
+	for _, value := range values {
+		tokens, err := toArrayString(value.([]interface{}))
+		if err != nil {
+			return nil, err
+		}
+		cmds = append(cmds, &core.RedisCmd{
+			Cmd:  strings.ToUpper(tokens[0]),
+			Args: tokens[1:],
+		})
 	}
+	return cmds, nil
+
+}
+
+func respond(cmds core.RedisCmds, c io.ReadWriter) {
+	core.EvalAndRespond(cmds, c)
 }
 
 func RunSyncTCPServer() {
@@ -71,7 +82,7 @@ func RunSyncTCPServer() {
 
 		for {
 			// over the socket, continuously read the command and print it out
-			cmd, err := readCommand(c)
+			cmds, err := readCommands(c)
 
 			if err != nil {
 				c.Close()
@@ -80,7 +91,7 @@ func RunSyncTCPServer() {
 					break
 				}
 			}
-			respond(cmd, c)
+			respond(cmds, c)
 
 		}
 	}
