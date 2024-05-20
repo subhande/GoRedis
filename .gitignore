@@ -3,3 +3,6 @@
 bin/dice
 **.DS_Store
 *.aof
+redis_exporter
+godocker
+prometheus

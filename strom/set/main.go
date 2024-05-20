@@ -29,7 +29,7 @@ func stormSet(wg *sync.WaitGroup) {
 		time.Sleep(500 * time.Millisecond)
 		k, v := getRandomKeyValue()
 		var buf [512]byte
-		cmd := fmt.Sprintf("SET %s %d", k, v)
+		cmd := fmt.Sprintf("SET %s %d EX %d", k, v, 15)
 		fmt.Println(cmd)
 		_, err = conn.Write(core.Encode(strings.Split(cmd, " "), false))
 		if err != nil {
