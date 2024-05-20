@@ -6,7 +6,7 @@ var KeysLimit int = 100
 
 // Will evict EvictionRatio of keys whenever eviction runs
 var EvictionRatio float64 = 0.4
-var EvictionStrategy string = "allkeys-random"
+var EvictionStrategy string = "allkeys-lru"
 // var EvictionStrategy string = "simple-first"
 
 var AOFFile string = "./goredis-master.aof"

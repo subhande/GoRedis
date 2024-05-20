@@ -1,0 +1,40 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Attach these labels to any time series or alerts when communicating with
+# external systems (federation, remote storage, Alertmanager).
+  external_labels:
+    monitor: "prometheus-stack-monitor"
+
+# Load and evaluate rules in this file every 'evaluation_interval' seconds.
+#rule_files:
+# - "first.rules"
+# - "second.rules"
+
+scrape_configs:
+# scrape Prometheus itself
+  - job_name: prometheus
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    static_configs:
+      - targets: ["prometheus-server:9090"]
+
+# scrape Redis Enterprise
+  - job_name: redis_exporter
+    static_configs:
+    - targets: ['redis-exporter:9121']
+  
+  ## config for the multiple Redis targets that the exporter will scrape
+  - job_name: 'redis_exporter_targets'
+    static_configs:
+      - targets:
+        - redis://redis-server:7379
+    metrics_path: /scrape
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: redis-exporter:9121
