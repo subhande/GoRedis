@@ -52,6 +52,7 @@ func Get(k string) *Obj {
 			log.Println("passive delete | key: ", k, "as it was expired")
 			return nil
 		}
+		v.LastAccessedAt = getCurrentClock()
 	}
 	return v
 }
